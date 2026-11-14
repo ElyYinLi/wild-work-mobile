@@ -1,0 +1,12 @@
+name: Runner Probe
+on:
+  workflow_dispatch:
+jobs:
+  probe14:
+    runs-on: macos-14
+    steps:
+      - run: echo "macos-14 ok" && xcodebuild -version
+  probelatest:
+    runs-on: macos-latest
+    steps:
+      - run: echo "macos-latest ok" && xcodebuild -version
