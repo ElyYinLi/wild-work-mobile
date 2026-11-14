@@ -8,6 +8,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="WildWork" />
 <title>WildWork</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%228%22 fill=%22%234F8DFD%22/%3E%3Ctext x=%2216%22 y=%2222%22 font-size=%2218%22 font-family=%22sans-serif%22 font-weight=%22bold%22 fill=%22white%22 text-anchor=%22middle%22%3EW%3C/text%3E%3C/svg%3E" />
 <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -85,8 +86,9 @@
 
     <div class="section-head"><h2>模型用量</h2></div>
     <div id="modelList" class="list"></div>
+    <!-- 平台汇总由 app.js 动态插到 modelList 之后（#platformBlock） -->
 
-    <div class="section-head"><h2>最近请求</h2></div>
+    <div class="section-head" style="margin-top:18px"><h2>最近请求</h2></div>
     <div id="recentList" class="list compact"></div>
   </main>
 

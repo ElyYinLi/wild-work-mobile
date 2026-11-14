@@ -54,6 +54,10 @@
   function chanMeta(group) {
     const key = String(group || "").toLowerCase();
     if (CHANNELS[key]) return CHANNELS[key];
+    // 上游 group 可能是 oczen / custom:xxx 等变体，做一次前缀匹配
+    for (const k of Object.keys(CHANNELS)) {
+      if (key.startsWith(k)) return CHANNELS[k];
+    }
     if (key.includes("custom")) return CHANNELS.custom;
     return { name: group || "未知渠道", short: String(group || "?").slice(0, 6).toUpperCase(), desc: "" };
   }
@@ -203,6 +207,16 @@
     return { cls: "", text: "正常" };
   }
 
+  /** 签到时间：宽屏显示完整「MM-DD HH:MM」，窄屏只留「HH:MM」，避免被省略号吃掉。 */
+  function fmtCheckin(raw) {
+    const s = String(raw || "").trim();
+    if (!s || s === "—") return "—";
+    const wide = window.matchMedia("(min-width: 400px)").matches;
+    if (wide) return s;
+    const m = s.match(/(\d{1,2}:\d{2})\s*$/);
+    return m ? m[1] : s;
+  }
+
   function renderAccounts() {
     const accs = (state && state.accounts) || [];
     const list = $("accountList");
@@ -231,12 +245,26 @@
     // 渠道分组顺序：按名称聚合，避免同渠道账号被其它渠道插散
     list.innerHTML = accs.map((a) => {
       const meta = chanMeta(a.group);
-      const st = accountStatus(a);
+    const st = accountStatus(a);
       const creditText = a.credits_na
         ? "不适用"
         : (a.credits_stale ? "待刷新" : fmtNum(a.credits));
       const creditUnit = a.credits_unit === "token" ? "Token" : "积分";
-      const coolingText = a.cooling && a.until ? "至 " + a.until : st.text;
+
+      // 状态列既要说清「为什么」，又不能在小屏上被截断：
+      // 正常 → 短文案；冷却 / 失效 → 带时刻，字号已由 .v 的 ellipsis 兜底
+      let statusText = st.text;
+      let statusCls = st.cls;
+      if (a.cooling && a.until && !a.disabled && !a.session_dead) {
+        // "11-15 03:20" → "03:20 解冻"：小屏上省掉日期也不歧义（冷却通常只有几分钟到几小时）
+        const clock = String(a.until).split(" ").pop();
+        statusText = clock + " 解冻";
+        statusCls = "cooling";
+      }
+      const statusColor = statusCls === "dead" ? "danger"
+        : statusCls === "cooling" ? "warn"
+        : statusCls === "off" ? ""
+        : "ok";
 
       return `
       <article class="ac-card ${a.disabled ? "off" : ""} ${a.session_dead || a.refresh_token_missing ? "dead" : ""}" data-uid="${esc(a.uid)}">
@@ -246,17 +274,17 @@
           <span class="dot ${st.cls}"></span>
         </div>
         <div class="ac-metrics">
-          <div class="metric" style="flex:1.2">
+          <div class="metric" style="flex:1.1">
             <span class="k">${creditUnit}</span>
-            <span class="v ${a.cooling ? "warn" : ""}">${esc(creditText)}</span>
+            <span class="v">${esc(creditText)}</span>
           </div>
-          <div class="metric" style="flex:1.3">
+          <div class="metric" style="flex:1.4">
             <span class="k">状态</span>
-            <span class="v ${st.cls === "dead" ? "danger" : st.cls === "cooling" ? "warn" : st.cls === "off" ? "" : "ok"}">${esc(coolingText)}</span>
+            <span class="v ${statusColor}">${esc(statusText)}</span>
           </div>
           <div class="metric" style="flex:1">
             <span class="k">签到</span>
-            <span class="v ${a.last_checkin_ok ? "ok" : ""}">${esc(a.last_checkin_at || "—")}</span>
+            <span class="v ${a.last_checkin_ok ? "ok" : ""}">${esc(fmtCheckin(a.last_checkin_at))}</span>
           </div>
         </div>
         <div class="ac-actions">
@@ -328,15 +356,16 @@
     // 平台汇总（取 stats.platforms），比模型榜更能反映账户健康
     const plats = s.platforms || [];
     if (plats.length) {
-      const extra = plats.map((p) => {
+      const platRows = plats.map((p) => {
         const meta = chanMeta(p.group);
         return `<div class="row-item">
           <span class="name">${esc(meta.name)} <span style="color:var(--text-faint)">${Number(p.accounts) || 0} 号</span></span>
           <span class="val">${fmtNum(p.credits)} 分 · 用 ${fmtNum(p.credit_used)}</span>
         </div>`;
       }).join("");
-      $("modelList").insertAdjacentHTML("beforeend",
-        '<div class="section-head" style="margin-top:18px"><h2>平台</h2></div>' + extra);
+      $("modelList").insertAdjacentHTML("afterend",
+        '<div id="platformBlock"><div class="section-head" style="margin-top:18px"><h2>平台</h2></div>' +
+        '<div class="list">' + platRows + "</div></div>");
     }
 
     loadRecent();
@@ -649,5 +678,19 @@
   document.addEventListener("DOMContentLoaded", () => {
     bind();
     boot();
+
+    // 旋屏 / 分屏切换时按新宽度重算时间格式（只在宽度档位变化时重绘，避免抖动）
+    let lastWide = window.matchMedia("(min-width: 400px)").matches;
+    let resizeTimer = null;
+    window.addEventListener("resize", () => {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        const wide = window.matchMedia("(min-width: 400px)").matches;
+        if (wide !== lastWide) {
+          lastWide = wide;
+          if (state) renderAccounts();
+        }
+      }, 180);
+    });
   });
 })();
