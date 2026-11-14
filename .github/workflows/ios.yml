@@ -10,9 +10,10 @@ permissions:
 
 jobs:
   build:
-    # macos-14 自带 Xcode 15（Apple Silicon），是产出 iOS 包的唯一途径：
+    # macos-latest（当前为 Apple Silicon + Xcode 16），是产出 iOS 包的唯一途径；
+    # 注意：macos-14 标签已从公开池下线，用它会卡在「cancelled 且无 runner」。
     # 沙箱/本地 Linux 无法编译 iOS。
-    runs-on: macos-14
+    runs-on: macos-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v4
