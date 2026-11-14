@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
+<meta name="theme-color" content="#0A0D12" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="WildWork" />
+<title>WildWork</title>
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+<!-- 启动骨架 -->
+<div id="splash" class="splash">
+  <div class="splash-logo">W</div>
+  <div class="splash-bar"><i></i></div>
+  <p id="splashText">正在连接…</p>
+</div>
+
+<div id="app" class="app hidden">
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">W</div>
+      <div class="brand-text">
+        <h1>WildWork</h1>
+        <p id="subtitle">—</p>
+      </div>
+    </div>
+    <button id="btnReload" class="icon-btn" aria-label="刷新">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3.5-7.1"/><path d="M21 3v6h-6"/></svg>
+    </button>
+  </header>
+
+  <main id="view-accounts" class="view">
+    <section class="summary">
+      <div class="stat-card">
+        <span class="stat-label">可用账号</span>
+        <strong class="stat-value" id="statAccounts">—</strong>
+        <span class="stat-sub" id="statAccountsSub">—</span>
+      </div>
+      <div class="stat-card tint">
+        <span class="stat-label">总积分</span>
+        <strong class="stat-value" id="statCredits">—</strong>
+        <span class="stat-sub" id="statCreditsSub">—</span>
+      </div>
+    </section>
+
+    <div class="quick-row">
+      <button class="quick-btn" id="btnCheckinAll">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+        全部签到
+      </button>
+      <button class="quick-btn" id="btnRefreshAll">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-3.5-7.1"/><path d="M21 3v6h-6"/></svg>
+        刷新积分
+      </button>
+      <button class="quick-btn primary" id="btnAddAccount">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        添加
+      </button>
+    </div>
+
+    <div class="section-head">
+      <h2>账号</h2>
+      <span id="accountCount" class="muted"></span>
+    </div>
+    <div id="accountList" class="list"></div>
+  </main>
+
+  <main id="view-stats" class="view hidden">
+    <section class="summary">
+      <div class="stat-card">
+        <span class="stat-label">今日请求</span>
+        <strong class="stat-value" id="statReq">—</strong>
+        <span class="stat-sub" id="statReqSub">—</span>
+      </div>
+      <div class="stat-card tint">
+        <span class="stat-label">今日消耗</span>
+        <strong class="stat-value" id="statSpend">—</strong>
+        <span class="stat-sub" id="statSpendSub">—</span>
+      </div>
+    </section>
+
+    <div class="section-head"><h2>模型用量</h2></div>
+    <div id="modelList" class="list"></div>
+
+    <div class="section-head"><h2>最近请求</h2></div>
+    <div id="recentList" class="list compact"></div>
+  </main>
+
+  <main id="view-settings" class="view hidden">
+    <section class="panel">
+      <div class="panel-row" id="rowServer">
+        <div>
+          <div class="row-title">服务器地址</div>
+          <div class="row-sub" id="settingServer">—</div>
+        </div>
+        <button class="ghost-btn" id="btnSetServer">修改</button>
+      </div>
+      <div class="panel-row">
+        <div>
+          <div class="row-title">API 地址</div>
+          <div class="row-sub" id="settingApiAddr">—</div>
+        </div>
+        <button class="ghost-btn" data-copy="api">复制</button>
+      </div>
+      <div class="panel-row">
+        <div>
+          <div class="row-title">API Key</div>
+          <div class="row-sub" id="settingApiKey">—</div>
+        </div>
+        <button class="ghost-btn" data-copy="key">复制</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-row">
+        <div>
+          <div class="row-title">下次签到</div>
+          <div class="row-sub" id="settingNextCheckin">—</div>
+        </div>
+      </div>
+      <div class="panel-row">
+        <div>
+          <div class="row-title">面板版本</div>
+          <div class="row-sub" id="settingVersion">—</div>
+        </div>
+      </div>
+      <div class="panel-row" id="rowLogout">
+        <div>
+          <div class="row-title">退出登录</div>
+          <div class="row-sub">仅清除本机会话，不影响服务器</div>
+        </div>
+        <button class="ghost-btn danger" id="btnLogout">退出</button>
+      </div>
+    </section>
+
+    <p class="footnote">界面与 wild-work 分离维护：上游 API 变更时只需更新本页面的字段映射，无需重新打包原生壳（除非需要跟随系统能力）。</p>
+  </main>
+
+  <nav class="tabbar">
+    <button class="tab active" data-view="accounts">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>账号</span>
+    </button>
+    <button class="tab" data-view="stats">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 15l4-5 3 3 5-7"/></svg>
+      <span>统计</span>
+    </button>
+    <button class="tab" data-view="settings">
+      <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+      <span>设置</span>
+    </button>
+  </nav>
+</div>
+
+<!-- 登录 -->
+<div id="loginOverlay" class="overlay hidden">
+  <div class="sheet-card">
+    <div class="sheet-handle"></div>
+    <h2>管理面板登录</h2>
+    <p class="muted">该面板监听在非本机地址，需要管理密码。</p>
+    <input id="loginPass" type="password" placeholder="管理密码" autocomplete="current-password" />
+    <div id="loginErr" class="err"></div>
+    <button id="btnLogin" class="btn-block primary">登录</button>
+    <button id="btnLoginCancel" class="btn-block ghost">改用其它服务器</button>
+  </div>
+</div>
+
+<!-- 通用底部弹层 -->
+<div id="sheet" class="overlay hidden">
+  <div class="sheet-card" id="sheetBody"></div>
+</div>
+
+<div id="toast" class="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>

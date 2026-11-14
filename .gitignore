@@ -1,0 +1,18 @@
+# 构建产物
+dist/
+build/
+android/app/build/
+android/.gradle/
+android/local.properties
+
+# 由 CI 或本地脚本生成，不入库，避免 UI 双份维护
+android/app/src/main/assets/www/
+ios/WildWorkMobile/www/
+ios/build/
+ios/*.xcodeproj/
+ios/*.xcworkspace/
+DerivedData/
+
+# 系统
+.DS_Store
+*.log
