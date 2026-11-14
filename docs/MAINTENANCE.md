@@ -202,12 +202,30 @@ git add -A && git commit -m "sync: 适配上游 vX.Y.Z 的 xxx 变更" && git pu
 | iOS 完全连不上局域网 | 未授权本地网络 | 设置 → 隐私 → 本地网络，允许 WildWork；或重装触发授权弹窗 |
 | Android 装不上 | 已有同包名但签名不同的旧版 | 先卸载旧版 |
 | iOS 装完打不开 | 未重签 / 证书过期 | 重新用 SideStore/Sideloadly 签名 |
-| CI 里 iOS 构建失败 | Xcode 版本或工程定义 | 看 `xcodebuild -showsdks` 输出；必要时把 `macos-14` 提到 `macos-15` |
+| CI 里 iOS 构建失败 | Xcode 版本或工程定义 | 看 `xcodebuild -showsdks` 输出；必要时调整 `project.yml` |
+| **iOS job 显示 cancelled 且 runner 为空、步骤数为 0** | 该 runner 标签不可用 | 不是代码问题，是 runner 不存在。本仓库踩过两次：① 私有仓库的 macOS runner 需要已验证的账单方式；② `macos-14` 标签已从公开池下线。诊断方法见下方「runner 探针」 |
+
+### runner 探针（怀疑 runner 不可用时先跑这个）
+
+```yaml
+# .github/workflows/_probe.yml，用完即删
+name: Runner Probe
+on: { workflow_dispatch: }
+jobs:
+  probe:
+    runs-on: macos-latest
+    steps:
+      - run: xcodebuild -version
+```
+
+- 探针成功、业务 job 失败 → 是代码/工程问题
+- 探针也 cancelled 且 `runner_name` 为空 → 是 runner 标签或账号策略问题，改标签或改仓库可见性
+
+**当前可用标签：`macos-latest`（不要再改回 `macos-14`）。**
 
 ---
 
 ## 5. 不要做的事
-
 1. **不要在原生壳里写业务逻辑**。任何「这个字段怎么显示」的决策都属于 `app.js`，否则两端要改两遍。
 2. **不要让 UI 直接请求上游地址**。必须走 `127.0.0.1:17863`，否则 CORS 与 Cookie 立刻出问题。
 3. **不要给 UI 目录加构建步骤**（webpack/vite）。刻意保持「改完刷新即生效」，降低接手成本。
