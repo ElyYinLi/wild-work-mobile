@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
-        proxy = new ProxyServer(PROXY_PORT);
+        proxy = new ProxyServer(PROXY_PORT, getAssets());
         buildContentView();
 
         String saved = prefs.getString(KEY_SERVER, "");

@@ -1,5 +1,7 @@
 package com.wildwork.mobile;
 
+import android.content.res.AssetManager;
+
 import java.io.BufferedInputStream;
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayOutputStream;
@@ -47,13 +49,15 @@ public class ProxyServer {
     ));
 
     private final int port;
+    private final AssetManager assets;
     private volatile String upstreamBase = "";
     private volatile ServerSocket serverSocket;
     private volatile boolean running;
     private final ExecutorService pool = Executors.newCachedThreadPool();
 
-    public ProxyServer(int port) {
+    public ProxyServer(int port, AssetManager assets) {
         this.port = port;
+        this.assets = assets;
     }
 
     public int getPort() {
@@ -173,6 +177,14 @@ public class ProxyServer {
             if ("/__ww_health".equals(rawPath)) {
                 writeJson(out, 200, "{\"ok\":true,\"upstream\":" + quote(upstreamBase) + "}");
                 return;
+            }
+
+            // 静态资源（我们的 UI）由本进程直接从 assets 提供；只有 /api/ 才转发上游。
+            // 这样页面与接口同源，Cookie 与 fetch 都天然可用，也不需要上游开 CORS。
+            if (!rawPath.startsWith("/api/")) {
+                if (serveStatic(out, method, rawPath)) {
+                    return;
+                }
             }
 
             if (upstreamBase.isEmpty()) {
@@ -301,6 +313,60 @@ public class ProxyServer {
             return "http://127.0.0.1:" + port + location.substring(upstreamBase.length());
         }
         return location;
+    }
+
+    /** 从 assets/www 提供静态文件。返回 false 表示不是本地资源，交给上游。 */
+    private boolean serveStatic(OutputStream out, String method, String rawPath) throws IOException {
+        String path = rawPath;
+        int q = path.indexOf('?');
+        if (q >= 0) {
+            path = path.substring(0, q);
+        }
+        if (path.isEmpty() || "/".equals(path)) {
+            path = "/index.html";
+        }
+        if (path.contains("..")) {
+            return false;
+        }
+
+        InputStream is;
+        try {
+            is = assets.open("www" + path);
+        } catch (IOException notFound) {
+            return false;
+        }
+        try {
+            byte[] data = readAll(is);
+            String head = "HTTP/1.1 200 OK\r\n"
+                    + "Content-Type: " + mimeOf(path) + "\r\n"
+                    + "Content-Length: " + data.length + "\r\n"
+                    + "Cache-Control: no-cache\r\n"
+                    + "Connection: close\r\n\r\n";
+            out.write(head.getBytes(StandardCharsets.ISO_8859_1));
+            if (!"HEAD".equals(method)) {
+                out.write(data);
+            }
+            out.flush();
+            return true;
+        } finally {
+            try {
+                is.close();
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    private static String mimeOf(String path) {
+        String p = path.toLowerCase(Locale.ROOT);
+        if (p.endsWith(".html") || p.endsWith(".htm")) return "text/html; charset=utf-8";
+        if (p.endsWith(".js")) return "application/javascript; charset=utf-8";
+        if (p.endsWith(".css")) return "text/css; charset=utf-8";
+        if (p.endsWith(".json")) return "application/json; charset=utf-8";
+        if (p.endsWith(".png")) return "image/png";
+        if (p.endsWith(".svg")) return "image/svg+xml";
+        if (p.endsWith(".ico")) return "image/x-icon";
+        if (p.endsWith(".woff2")) return "font/woff2";
+        return "application/octet-stream";
     }
 
     private void writeJson(OutputStream out, int status, String json) throws IOException {

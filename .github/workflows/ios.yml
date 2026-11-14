@@ -1,0 +1,82 @@
+name: Build iOS IPA
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    # macos-14 自带 Xcode 15（Apple Silicon），是产出 iOS 包的唯一途径：
+    # 沙箱/本地 Linux 无法编译 iOS。
+    runs-on: macos-14
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync shared UI into app bundle
+        run: |
+          rm -rf ios/WildWorkMobile/www
+          mkdir -p ios/WildWorkMobile/www
+          cp -r mobile-ui/. ios/WildWorkMobile/www/
+          ls -la ios/WildWorkMobile/www/
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate Xcode project
+        working-directory: ios
+        run: xcodegen generate
+
+      - name: Show available SDKs
+        run: xcodebuild -showsdks
+
+      - name: Build unsigned app
+        working-directory: ios
+        run: |
+          xcodebuild \
+            -project WildWorkMobile.xcodeproj \
+            -scheme WildWorkMobile \
+            -configuration Release \
+            -sdk iphoneos \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build 2>&1 | tail -60
+
+      - name: Package unsigned IPA
+        run: |
+          APP=$(find ios/build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
+          echo "app: $APP"
+          test -n "$APP"
+          rm -rf out && mkdir -p out/Payload
+          cp -R "$APP" out/Payload/
+          cd out && zip -qry WildWorkMobile.ipa Payload
+          ls -lh WildWorkMobile.ipa
+
+      - name: Upload workflow artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WildWorkMobile-ipa
+          path: out/WildWorkMobile.ipa
+
+      - name: Publish rolling release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ios-latest
+          name: iOS 最新构建（未签名）
+          body: |
+            由 GitHub Actions 在 macOS runner 上自动构建（commit `${{ github.sha }}`）。
+
+            这是**未签名** IPA，安装前需要自签：
+            - SideStore / AltStore：直接导入 IPA 即可
+            - Sideloadly（Windows/macOS）：拖入 IPA，填 Apple ID 后签名安装
+            - 自有开发者证书：`codesign` 重签后再装
+
+            免费 Apple ID 自签有效期 7 天，到期需重新签。
+          files: out/WildWorkMobile.ipa
+          make_latest: false
