@@ -3,11 +3,11 @@ plugins {
 }
 
 android {
-    namespace = "com.wildwork.mobile"
+    namespace = "com.wildwork.nativeapp"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.wildwork.mobile"
+        applicationId = "com.wildwork.nativeapp"
         minSdk = 24
         targetSdk = 34
         versionCode = 1

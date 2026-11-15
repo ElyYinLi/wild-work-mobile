@@ -38,6 +38,8 @@ jobs:
       - name: Build unsigned app
         working-directory: ios
         run: |
+          set -euo pipefail
+          # 不能接 `| tail`：管道会把退出码换成 tail 的 0，构建失败也照样打包。
           xcodebuild \
             -project WildWorkMobile.xcodeproj \
             -scheme WildWorkMobile \
@@ -47,17 +49,31 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             CODE_SIGN_IDENTITY="" \
-            build 2>&1 | tail -60
+            build > build.log 2>&1 || { tail -120 build.log; exit 1; }
+          tail -15 build.log
 
-      - name: Package unsigned IPA
+      - name: Package + verify unsigned IPA
         run: |
+          set -euo pipefail
           APP=$(find ios/build/Build/Products/Release-iphoneos -maxdepth 1 -name "*.app" | head -1)
           echo "app: $APP"
           test -n "$APP"
+          ls -la "$APP"
+
+          # actool 未生效时补 CFBundleIconFiles（否则 App 内正常、桌面图标空白）
+          python3 scripts/inject_icons.py "$APP"
+
+          # 关掉签名后 Xcode 偶发不设执行位，装机时会 posix_spawn 失败
+          chmod 0755 "$APP/WildWorkMobile"
+
           rm -rf out && mkdir -p out/Payload
-          cp -R "$APP" out/Payload/
-          cd out && zip -qry WildWorkMobile.ipa Payload
-          ls -lh WildWorkMobile.ipa
+          cp -R -p "$APP" out/Payload/
+          cd out && zip -qry WildWorkMobile.ipa Payload && cd ..
+          ls -lh out/WildWorkMobile.ipa
+
+          python3 scripts/verify_ipa.py out/WildWorkMobile.ipa \
+            --app-name WildWorkMobile \
+            --bundle-id com.wildwork.mobile
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v4
