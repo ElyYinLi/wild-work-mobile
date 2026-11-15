@@ -75,12 +75,18 @@ public class MainActivity extends Activity {
     private void applyStatusBar(int bg) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
         getWindow().setStatusBarColor(bg);
+        getWindow().setNavigationBarColor(bg);
         View decor = getWindow().getDecorView();
         int flags = decor.getSystemUiVisibility();
+        // 底部导航栏图标明暗跟随（LIGHT_NAVIGATION_BAR 是 API 26+）
+        int navFlag = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                ? View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR : 0;
         if (darkMode()) {
-            flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;  // 深色底 → 白色状态栏图标
+            flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;  // 深色底 → 白色系统栏图标
+            flags &= ~navFlag;
         } else {
-            flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;   // 浅色底 → 深色状态栏图标
+            flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;   // 浅色底 → 深色系统栏图标
+            flags |= navFlag;
         }
         decor.setSystemUiVisibility(flags);
     }

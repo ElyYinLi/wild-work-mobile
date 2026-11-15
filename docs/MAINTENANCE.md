@@ -260,6 +260,10 @@ Android release 用 debug 签名（自用免配置 keystore）；iOS 出未签�
 `UIStatusBarStyleLightContent`。UI 自带 `viewport-fit=cover` 与 `--safe-top/--safe-bottom`，
 所以 WebView 侧必须 `.ignoresSafeArea(.all)`；只忽略 `.bottom` 会让状态栏区域露出容器底色，
 看起来像一条黑边。注意这与 `wild-work-native` 仓库**相反**（那边上游面板是浅色）。
+Android 侧不能只在代码里改：`res/values/themes.xml`（浅色）与
+`res/values-night/themes.xml`（深色）由系统按 `uiMode` 自动选择，
+`windowBackground` / `navigationBarColor` / `windowLightStatusBar` 三处都要跟着变，
+否则启动闪黑、底部导航栏发黑。
 
 **下拉刷新与性能**
 iOS 用 `WKWebView.scrollView.refreshControl`（`bounces` 必须为 `true`），Android 用自写
