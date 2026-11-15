@@ -18,6 +18,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Resolve upstream version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 scripts/resolve_upstream_version.py --github-env
+
+      - name: Apply upstream version to Xcode spec
+        run: |
+          python3 scripts/set_ios_version.py \
+            --version "${{ env.WW_VERSION }}" \
+            --code "${{ env.WW_VERSION_CODE }}"
+
       - name: Sync shared UI into app bundle
         run: |
           rm -rf ios/WildWorkMobile/www
@@ -87,6 +98,8 @@ jobs:
           tag_name: ios-latest
           name: iOS 最新构建（未签名）
           body: |
+            对应上游版本：`${{ env.WW_VERSION }}`
+
             由 GitHub Actions 在 macOS runner 上自动构建（commit `${{ github.sha }}`）。
 
             这是**未签名** IPA，安装前需要自签：

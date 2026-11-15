@@ -3,15 +3,18 @@ plugins {
 }
 
 android {
-    namespace = "com.wildwork.nativeapp"
+    namespace = "com.wildwork.mobile"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.wildwork.nativeapp"
+        // 与 iOS 侧 com.wildwork.mobile 及 Java 源码包名保持一致；
+        // 此前误用 com.wildwork.nativeapp，会与纯移动端 APK 互相覆盖。
+        applicationId = "com.wildwork.mobile"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        // 版本号由 CI 从上游最新 tag 注入（-PupstreamVersion / -PversionCode）。
+        versionCode = project.findProperty("versionCode")?.toString()?.toIntOrNull() ?: 1
+        versionName = project.findProperty("upstreamVersion")?.toString() ?: "0.0.0"
     }
 
     buildTypes {

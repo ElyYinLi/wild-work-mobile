@@ -17,8 +17,8 @@
 
 用法
 ----
-    verify_ipa.py <ipa 路径> --app-name WildWork --bundle-id com.wildwork.nativeapp
-                   [--require-go] [--min-icon 60]
+    verify_ipa.py <ipa 路径> --app-name WildWorkMobile --bundle-id com.wildwork.mobile
+                   [--min-icon 60]
 """
 
 from __future__ import annotations

@@ -256,10 +256,12 @@ jobs:
 Android release 用 debug 签名（自用免配置 keystore）；iOS 出未签名 IPA（无法在 CI 里持有用户的开发者证书）。若要长期分发，替换为正式证书，并在 CI 注入 secrets。
 
 **主题色与全屏（顶部黑边）**
-`mobile-ui` 是**深色**主题（`--bg: #0a0d12`），容器/状态栏也必须深色 +
-`UIStatusBarStyleLightContent`。UI 自带 `viewport-fit=cover` 与 `--safe-top/--safe-bottom`，
-所以 WebView 侧必须 `.ignoresSafeArea(.all)`；只忽略 `.bottom` 会让状态栏区域露出容器底色，
-看起来像一条黑边。注意这与 `wild-work-native` 仓库**相反**（那边上游面板是浅色）。
+`mobile-ui` 支持 `prefers-color-scheme`，含深色（`--bg: #0a0d12`）与浅色（`#f5f7fb`）两套；
+容器必须**跟随系统深浅模式**（iOS `@Environment(\.colorScheme)`，Android `values/` +
+`values-night/`），且不要硬编码 `UIStatusBarStyle`。UI 自带 `viewport-fit=cover` 与
+`--safe-top/--safe-bottom`，WebView 侧必须 `.ignoresSafeArea(.all)`；只忽略 `.bottom`
+会让状态栏区域露出容器底色，看起来像一条黑边。注意这与 `wild-work-native` 仓库不同：
+那边上游面板是固定浅色，容器也固定浅色。
 Android 侧不能只在代码里改：`res/values/themes.xml`（浅色）与
 `res/values-night/themes.xml`（深色）由系统按 `uiMode` 自动选择，
 `windowBackground` / `navigationBarColor` / `windowLightStatusBar` 三处都要跟着变，
@@ -276,3 +278,24 @@ iOS 用 `WKWebView.scrollView.refreshControl`（`bounces` 必须为 `true`），
 `remove` / `disable`（不是脏数据，别试图调 API 删）。`mobile-ui/app.js` 的 `renderAccounts()`
 对它们渲染 `.ac-internal` 常驻说明、不渲染「签到/刷新」按钮——手机没有 hover，
 上游放在 `title` 里的「固定账号，不可删除」用户根本看不到。改动时保持这个分支。
+
+
+---
+
+## 7. 应用 ID 与版本号
+
+**应用 ID**：Android 的 `applicationId` / `namespace`、Java 源码包名与 iOS 的
+`PRODUCT_BUNDLE_IDENTIFIER` 统一为 `com.wildwork.mobile`。此前 Android 误用
+`com.wildwork.nativeapp`，与 `wild-work-native` 的 APK 完全相同，同一台设备会互相覆盖；
+`namespace` 也和 Java 包名不一致（因零 R 引用才没在编译时暴露）。桌面显示名为
+`WildWork Mobile`，与 native 版的 `WildWork` 区分。`verify_ipa.py` 只校验
+`CFBundleDisplayName` 是否存在，不校验具体值，改显示名不影响流水线。
+
+**版本号**：由 `scripts/resolve_upstream_version.py` 从上游最新 tag 解析
+（`v2.11.7` → `2.11.7`，versionCode `21107`）。Android 经 `-PupstreamVersion` /
+`-PversionCode` 注入 gradle；iOS 由 `scripts/set_ios_version.py` 在 `xcodegen generate`
+之前写入 `project.yml` 的四个版本字段。上游既无 Releases 也无 `version.go`，
+旧的解析逻辑会输出 `unknown`，已废弃。版本号代表构建时上游最新 tag，
+而本客户端连接的是用户自行部署的上游服务，两者版本未必相同。
+
+**许可**：根目录 `LICENSE`，非商业研究用途，与 README「许可与使用条款」逐字一致。
