@@ -254,3 +254,21 @@ jobs:
 
 **签名策略**
 Android release 用 debug 签名（自用免配置 keystore）；iOS 出未签名 IPA（无法在 CI 里持有用户的开发者证书）。若要长期分发，替换为正式证书，并在 CI 注入 secrets。
+
+**主题色与全屏（顶部黑边）**
+`mobile-ui` 是**深色**主题（`--bg: #0a0d12`），容器/状态栏也必须深色 +
+`UIStatusBarStyleLightContent`。UI 自带 `viewport-fit=cover` 与 `--safe-top/--safe-bottom`，
+所以 WebView 侧必须 `.ignoresSafeArea(.all)`；只忽略 `.bottom` 会让状态栏区域露出容器底色，
+看起来像一条黑边。注意这与 `wild-work-native` 仓库**相反**（那边上游面板是浅色）。
+
+**下拉刷新与性能**
+iOS 用 `WKWebView.scrollView.refreshControl`（`bounces` 必须为 `true`），Android 用自写
+`PullToRefreshLayout`（零第三方依赖，没有 AndroidX 的 `SwipeRefreshLayout`）。
+两端 WebView 都必须 `LOAD_DEFAULT` + `isOpaque = true`：`LOAD_NO_CACHE` 会每次重新解析
+整套 UI 资源，透明合成会让滚动掉帧。
+
+**账号卡片里的 oczen / kilo**
+这两条是**免密免费渠道**，上游后端会为它们各生成一个虚拟账号占位，并硬拒
+`remove` / `disable`（不是脏数据，别试图调 API 删）。`mobile-ui/app.js` 的 `renderAccounts()`
+对它们渲染 `.ac-internal` 常驻说明、不渲染「签到/刷新」按钮——手机没有 hover，
+上游放在 `title` 里的「固定账号，不可删除」用户根本看不到。改动时保持这个分支。

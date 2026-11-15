@@ -245,7 +245,11 @@
     // 渠道分组顺序：按名称聚合，避免同渠道账号被其它渠道插散
     list.innerHTML = accs.map((a) => {
       const meta = chanMeta(a.group);
-    const st = accountStatus(a);
+      const st = accountStatus(a);
+      // oczen / kilo 是免密免费池：上游各生成一个「虚拟账号」占位，后端硬拒删除/停用。
+      // 手机没有 hover，把说明做成常驻行，避免用户以为这是删不掉的僵尸账号。
+      const isBuiltin = ["oczen", "kilo"].some((k) =>
+        String(a.group || "").toLowerCase().startsWith(k));
       const creditText = a.credits_na
         ? "不适用"
         : (a.credits_stale ? "待刷新" : fmtNum(a.credits));
@@ -287,11 +291,13 @@
             <span class="v ${a.last_checkin_ok ? "ok" : ""}">${esc(fmtCheckin(a.last_checkin_at))}</span>
           </div>
         </div>
-        <div class="ac-actions">
-          <button class="act primary" data-act="checkin">签到</button>
-          <button class="act" data-act="refresh">刷新</button>
-          <button class="act icon-only" data-act="more">···</button>
-        </div>
+        ${isBuiltin
+          ? '<div class="ac-internal">内置免费通道 · 系统自动管理，无需登录/删除</div>'
+          : `<div class="ac-actions">
+              <button class="act primary" data-act="checkin">签到</button>
+              <button class="act" data-act="refresh">刷新</button>
+              <button class="act icon-only" data-act="more">···</button>
+            </div>`}
       </article>`;
     }).join("");
   }

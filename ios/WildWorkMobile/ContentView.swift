@@ -1,7 +1,10 @@
 import SwiftUI
 
 enum AppColor {
-    static let bg = Color(red: 0.039, green: 0.051, blue: 0.071)
+    static let bg = Color(red: 0.039, green: 0.051, blue: 0.071)          // #0a0d12 深色
+    // mobile-ui 有 @media (prefers-color-scheme: light)，浅色模式 --bg 是 #f5f7fb。
+    // 容器必须跟随，否则浅色模式下状态栏区域露出深色底 = 顶部一条黑边。
+    static let lightBg = Color(red: 0.961, green: 0.969, blue: 0.984)
     static let card = Color(red: 0.082, green: 0.106, blue: 0.141)
     static let accent = Color(red: 0.31, green: 0.55, blue: 0.99)
     static let dim = Color(red: 0.58, green: 0.64, blue: 0.72)
@@ -9,6 +12,7 @@ enum AppColor {
 
 struct ContentView: View {
     @EnvironmentObject var store: ServerStore
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var showSetup = false
     @State private var draft = ""
@@ -18,16 +22,19 @@ struct ContentView: View {
 
     var body: some View {
         ZStack {
-            AppColor.bg.ignoresSafeArea()
+            (colorScheme == .dark ? AppColor.bg : AppColor.lightBg).ignoresSafeArea()
 
             if store.isConfigured {
                 WebView(
                     url: URL(string: "http://127.0.0.1:\(ServerStore.proxyPort)/")!,
                     serverHint: store.server,
                     reloadToken: reloadToken,
+                    isDark: colorScheme == .dark,
                     onAction: handle
                 )
-                .ignoresSafeArea(edges: .bottom)
+                // mobile-ui 的 CSS 已用 --safe-top/--safe-bottom 处理安全区，
+                // 这里必须铺满全屏，否则状态栏区域会露出容器底色形成一条黑边。
+                .ignoresSafeArea(.all)
             } else {
                 placeholder
             }

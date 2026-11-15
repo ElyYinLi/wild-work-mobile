@@ -10,7 +10,15 @@ struct WebView: UIViewRepresentable {
     let url: URL
     let serverHint: String
     let reloadToken: UUID
+    /// 跟随系统深浅模式；mobile-ui 有 prefers-color-scheme 覆盖，容器底色必须同步
+    let isDark: Bool
     let onAction: ([String: Any]) -> Void
+
+    private var bg: UIColor {
+        isDark
+            ? UIColor(red: 0.039, green: 0.051, blue: 0.071, alpha: 1)
+            : UIColor(red: 0.961, green: 0.969, blue: 0.984, alpha: 1)
+    }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(onAction: onAction)
@@ -29,12 +37,23 @@ struct WebView: UIViewRepresentable {
 
         let wv = WKWebView(frame: .zero, configuration: cfg)
         wv.navigationDelegate = context.coordinator
-        wv.isOpaque = false
-        wv.backgroundColor = UIColor(red: 0.039, green: 0.051, blue: 0.071, alpha: 1)
-        wv.scrollView.backgroundColor = wv.backgroundColor
+        // mobile-ui 是不透明深色主题；关掉透明合成能明显减轻滚动时的掉帧。
+        wv.isOpaque = true
+        wv.backgroundColor = bg
+        wv.scrollView.backgroundColor = bg
         wv.scrollView.contentInsetAdjustmentBehavior = .never
         wv.allowsBackForwardNavigationGestures = false
-        wv.scrollView.bounces = false
+        // 下拉刷新需要弹性滚动；网页侧 overscroll-behavior-y:none 已阻止自身橡皮筋
+        wv.scrollView.bounces = true
+
+        let refresh = UIRefreshControl()
+        refresh.tintColor = UIColor(red: 0.31, green: 0.55, blue: 0.99, alpha: 1)
+        refresh.addTarget(context.coordinator,
+                          action: #selector(Coordinator.doRefresh(_:)),
+                          for: .valueChanged)
+        wv.scrollView.refreshControl = refresh
+
+        context.coordinator.webView = wv
         wv.load(URLRequest(url: url))
 
         context.coordinator.lastToken = reloadToken
@@ -42,6 +61,10 @@ struct WebView: UIViewRepresentable {
     }
 
     func updateUIView(_ webView: WKWebView, context: Context) {
+        // 系统切换深浅模式时 SwiftUI 会调 updateUIView；背景同步必须放在 guard 之前
+        webView.backgroundColor = bg
+        webView.scrollView.backgroundColor = bg
+
         guard context.coordinator.lastToken != reloadToken else { return }
         context.coordinator.lastToken = reloadToken
 
@@ -84,6 +107,7 @@ struct WebView: UIViewRepresentable {
     final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         private let onAction: ([String: Any]) -> Void
         var lastToken: UUID?
+        weak var webView: WKWebView?
 
         init(onAction: @escaping ([String: Any]) -> Void) {
             self.onAction = onAction
@@ -93,6 +117,19 @@ struct WebView: UIViewRepresentable {
                                    didReceive message: WKScriptMessage) {
             guard let body = message.body as? [String: Any] else { return }
             onAction(body)
+        }
+
+        @objc func doRefresh(_ sender: UIRefreshControl) {
+            webView?.reload()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3.0) { [weak sender] in
+                if sender?.isRefreshing == true { sender?.endRefreshing() }
+            }
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            if let r = webView.scrollView.refreshControl, r.isRefreshing {
+                r.endRefreshing()
+            }
         }
 
         func webView(_ webView: WKWebView,

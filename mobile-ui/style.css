@@ -334,6 +334,15 @@ body {
 .metric .v.warn { color: var(--warn); }
 .metric .v.danger { color: var(--danger); }
 
+/* oczen / kilo 虚拟账号：没有账号概念，用常驻说明替代一排必然失败的操作按钮 */
+.ac-internal {
+  padding: 10px 0 2px;
+  border-top: 1px dashed var(--line);
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
 .ac-actions {
   display: flex;
   gap: 8px;

@@ -28,8 +28,8 @@ targets:
         UIRequiresFullScreen: true
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-        UIStatusBarStyle: UIStatusBarStyleLightContent
-        UIViewControllerBasedStatusBarAppearance: false
+        # 不硬编码状态栏样式：mobile-ui 跟随系统深浅模式（有 prefers-color-scheme 覆盖），
+        # 交给 SwiftUI 的 preferredColorScheme 自动选择深色/浅色状态栏文字。
         # 面板通常跑在局域网 HTTP 上；ATS 默认会拦明文请求
         NSAppTransportSecurity:
           NSAllowsArbitraryLoads: true

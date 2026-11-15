@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
@@ -34,7 +35,13 @@ public class MainActivity extends Activity {
     private static final String PREFS = "wildwork";
     private static final String KEY_SERVER = "server";
 
+    // mobile-ui 有 @media (prefers-color-scheme: light)，浅色模式 --bg = #f5f7fb。
+    // 容器与状态栏必须跟随，否则浅色模式下顶部会露出深色底。
+    private static final int BG_DARK = Color.parseColor("#0A0D12");
+    private static final int BG_LIGHT = Color.parseColor("#F5F7FB");
+
     private WebView webView;
+    private PullToRefreshLayout pull;
     private ProxyServer proxy;
     private SharedPreferences prefs;
     private FrameLayout root;
@@ -55,9 +62,34 @@ public class MainActivity extends Activity {
         }
     }
 
+    /** mobile-ui 跟随系统深浅模式，容器与状态栏必须同步。 */
+    private boolean darkMode() {
+        return (getResources().getConfiguration().uiMode
+                & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    private int panelBackground() {
+        return darkMode() ? BG_DARK : BG_LIGHT;
+    }
+
+    private void applyStatusBar(int bg) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.M) return;
+        getWindow().setStatusBarColor(bg);
+        View decor = getWindow().getDecorView();
+        int flags = decor.getSystemUiVisibility();
+        if (darkMode()) {
+            flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;  // 深色底 → 白色状态栏图标
+        } else {
+            flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;   // 浅色底 → 深色状态栏图标
+        }
+        decor.setSystemUiVisibility(flags);
+    }
+
     private void buildContentView() {
+        int bg = panelBackground();
+        applyStatusBar(bg);
         root = new FrameLayout(this);
-        root.setBackgroundColor(Color.parseColor("#0A0D12"));
+        root.setBackgroundColor(bg);
 
         webView = new WebView(this);
         WebSettings s = webView.getSettings();
@@ -69,14 +101,16 @@ public class MainActivity extends Activity {
         s.setSupportZoom(false);
         s.setBuiltInZoomControls(false);
         s.setDisplayZoomControls(false);
-        s.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        // 缓存静态 UI 资源（mobile-ui 的 index/style/app），避免每次刷新重复解析；
+        // 数据接口经本地代理实时转发，不受缓存影响。
+        s.setCacheMode(WebSettings.LOAD_DEFAULT);
         s.setMediaPlaybackRequiresUserGesture(true);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             // 面板通常是局域网 HTTP；页面源虽然是 127.0.0.1，但保留放宽以免上游跳 http 时被拦
             s.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
 
-        webView.setBackgroundColor(Color.parseColor("#0A0D12"));
+        webView.setBackgroundColor(bg);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.addJavascriptInterface(new Bridge(), "WWNative");
 
@@ -101,13 +135,21 @@ public class MainActivity extends Activity {
             }
 
             @Override
+            public void onPageFinished(WebView view, String url) {
+                pull.setRefreshing(false);
+            }
+
+            @Override
             public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
                 showLoadError("无法加载界面：" + description);
             }
         });
         webView.setWebChromeClient(new WebChromeClient());
 
-        root.addView(webView, new FrameLayout.LayoutParams(
+        pull = new PullToRefreshLayout(this);
+        pull.attach(webView);
+        pull.setOnRefreshListener(() -> runOnUiThread(() -> webView.reload()));
+        root.addView(pull, new FrameLayout.LayoutParams(
                 ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
         errorView = new TextView(this);
@@ -220,7 +262,7 @@ public class MainActivity extends Activity {
         }
         if (webView != null) {
             try {
-                root.removeView(webView);
+                if (pull != null) pull.removeView(webView);
                 webView.destroy();
             } catch (Exception ignored) {
             }
