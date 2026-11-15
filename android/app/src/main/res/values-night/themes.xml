@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- 系统深色模式：与 mobile-ui 的 :root 深色变量（--bg #0a0d12）保持一致。
-         MainActivity.applyStatusBar() 会按 uiMode 再校准一次状态栏图标明暗。 -->
+    <!-- 系统深色模式：与 mobile-ui 的 :root 深色变量（bg = #0a0d12）保持一致。
+         MainActivity.applyStatusBar() 会按 uiMode 再校准一次状态栏图标明暗。
+         注意：XML 注释里不能出现连续两个连字符，别把 CSS 变量名原样抄进来。 -->
     <style name="AppTheme" parent="@android:style/Theme.Material.NoActionBar">
         <item name="android:statusBarColor">#0A0D12</item>
         <item name="android:navigationBarColor">#0A0D12</item>
